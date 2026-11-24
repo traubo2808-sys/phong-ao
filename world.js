@@ -407,6 +407,8 @@ const sfx=(()=>{let ac=null,master,loops={};
     horn(){if(!ac)return;const t=ac.currentTime,f=rnd(380,520),g=rnd(.012,.03);tone(f,.14,g,'square',t);tone(f*1.26,.14,g*.8,'square',t);if(Math.random()<.5){tone(f,.12,g,'square',t+.2);tone(f*1.26,.12,g*.8,'square',t+.2);}},
     alarm(){if(!ac)return;const t=ac.currentTime;for(let i=0;i<4;i++){tone(880,.12,.08,'square',t+i*.25);tone(1320,.12,.06,'square',t+i*.25+.12);}}};})();
 APP.sfx=sfx;
+// tab bị ẩn / chuyển sang tab khác / thu nhỏ cửa sổ → tự tắt tiếng, quay lại thì bật như cũ
+document.addEventListener('visibilitychange',()=>sfx.mute(document.hidden||!st.sound));
 
 /* ================= thiết bị (dùng chung với điện thoại) ================= */
 APP.dev={get:()=>({fan:st.fan,fanOsc:st.fanOsc,ac:st.ac,acTemp:st.acTemp,ceiling:st.ceiling,lamp:st.lamp,curtains:st.curtains,tv:tvOn}),
