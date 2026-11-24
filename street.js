@@ -297,8 +297,9 @@ export async function buildStreet(opts){
     if(h){const want=groundOff-h.point.y;if(Math.abs(want)<45&&Math.abs(h.point.y)>.05){groundOff=want;setFrame(tiles.group);}}return !!h;}
   setupGoogle3D();
   function safeSpot(x,z){if(!inBld(x,z,.7))return[x,z];for(let r=1;r<80;r+=.8)for(let a=0;a<24;a++){const px=x+Math.cos(a/24*6.283)*r,pz=z+Math.sin(a/24*6.283)*r;if(!inBld(px,pz,.7))return[px,pz];}return[spawn.x,spawn.z];}
+  function snapRoad(x,z){let best=null,bd=1e9;for(const r of roads){if(r.k==='footway'||r.k==='steps'||r.k==='path')continue;for(let i=0;i<r.p.length-1;i++){const A=r.p[i],B=r.p[i+1],dx=B[0]-A[0],dz=B[1]-A[1],L2=dx*dx+dz*dz||1;let t=((x-A[0])*dx+(z-A[1])*dz)/L2;t=Math.max(0,Math.min(1,t));const px=A[0]+dx*t,pz=A[1]+dz*t,d=Math.hypot(px-x,pz-z)-(VEH.has(r.k)?3:0);if(d<bd){bd=d;best=[px,pz];}}}return best||[x,z];}
   let use3D=true;
   function toggle3D(){if(!tiles||g3dState!=='on')return null;use3D=!use3D;tiles.group.visible=use3D;flats.forEach(o=>o.visible=!use3D);return use3D;}
-  return{toggle3D,get tiles(){return tiles;},get g3dState(){return g3dState;},mapC,MS,places,toLatLon,safeSpot,ICON,homeDoor:door,
+  return{snapRoad,toggle3D,get tiles(){return tiles;},get g3dState(){return g3dState;},mapC,MS,places,toLatLon,safeSpot,ICON,homeDoor:door,
     debug:{crownI,trunkI,sun,hemi},scene,spawn,update,collide,interactables,drawMinimap,streetName,occluders:bMeshes,homeDoor:door,counts:{blds:blds.length,osm:data.buildings.length,roads:roads.length,pois:pois.length,trees:treePos.length,lamps:lampPos.length}};
 }

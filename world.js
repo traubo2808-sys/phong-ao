@@ -391,7 +391,8 @@ const sfx=(()=>{let ac=null,master,loops={};
   return{init(){if(ac){ac.resume();return;}try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}master=ac.createGain();master.gain.value=st.sound?.9:0;master.connect(ac.destination);
       const w=nb(0),b=nb(1);loops.rain=loop(w,'bandpass',1300,.5);loops.rainLow=loop(b,'lowpass',400,.7);loops.fan=loop(b,'bandpass',520,.6);loops.ac=loop(b,'lowpass',260,.7);loops.fridge=loop(b,'lowpass',110,.8);loops.traffic=loop(b,'lowpass',420,.5);
       const ps=ac.createBufferSource();ps.buffer=b;ps.loop=true;const pl=ac.createBiquadFilter();pl.type='lowpass';pl.frequency.value=170;const am=ac.createGain();am.gain.value=.5;const lfo=ac.createOscillator();lfo.frequency.value=23;const lg=ac.createGain();lg.gain.value=.5;lfo.connect(lg);lg.connect(am.gain);loops.purr=ac.createGain();loops.purr.gain.value=0;ps.connect(pl);pl.connect(am);am.connect(loops.purr);loops.purr.connect(master);ps.start();lfo.start();},
-    set(n,v){if(!ac||!loops[n])return;loops[n].gain.setTargetAtTime(v,ac.currentTime,.4);},
+    set(n,v){if(!ac||!loops[n]||n!=='purr')return;// tắt mọi tiếng rè nền (quạt, máy lạnh, tủ lạnh, xe, mưa) vì nghe như gió, gây nhức đầu
+      loops[n].gain.setTargetAtTime(v,ac.currentTime,.4);},
     mute(m){if(master)master.gain.setTargetAtTime(m?0:.9,ac.currentTime,.2);},
     pop(){tone(660,.1,.05);tone(990,.1,.035,'sine',ac&&ac.currentTime+.05);},
     door(){tone(140,.25,.06,'triangle');},
@@ -433,6 +434,8 @@ addEventListener('keydown',e=>{const tag=e.target.tagName;if(tag==='INPUT'||tag=
     if(k==='escape'){exitMode();e.preventDefault();return;}if(map[k]){tvKey(map[k]);e.preventDefault();return;}if(k==='q'){APP.emit('phone:toggle');return;}return;}
   if(mode==='lie'){if(k==='escape'||k==='e'||k==='w'){exitMode();}return;}
   if(mapOpen){if(k==='escape'||k==='m')closeMap();return;}
+  if(k==='v'){svOpen?closeSV():openSV();return;}
+  if(svOpen){if(k==='escape')closeSV();return;}
   if(k==='m'&&mode==='walk'){openMap();return;}
   if(mode==='fridge'){if(k==='escape'||k==='e'){closeFridge();}return;}
   if(k==='escape'){if(phoneOpen){APP.emit('phone:close');return;}if(panelFn){closePanel();return;}return;}
@@ -688,6 +691,19 @@ $('#mapq').addEventListener('input',renderMapList);
 $('#mapq').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')closeMap();if(e.key==='Enter'){const b=$('#maplist .mitem');if(b)b.click();}});
 $('#bMap').onclick=()=>mapOpen?closeMap():openMap();
 APP.on('map:open',()=>openMap());
+/* ================= ảnh đường phố thật (Google Street View nhúng chính thức) ================= */
+let svOpen=false;
+async function ensureStreet(){if(street)return true;if(streetBuilding)return false;fade(true,'Đang tải bản đồ khu phố…');streetBuilding=true;try{street=await buildStreet(streetOpts());}catch(e){streetBuilding=false;fade(false);APP.toast('Không tải được bản đồ: '+e.message);return false;}streetBuilding=false;fade(false);return true;}
+async function openSV(x,z,heading,name){if(!await ensureStreet())return;if(mapOpen)closeMap();if(phoneOpen)APP.emit('phone:close');
+  if(x==null){const p=playerXZ();x=p.x;z=p.z;const v=new THREE.Vector3();camera.getWorldDirection(v);heading=where==='street'?(Math.atan2(v.x,-v.z)*180/Math.PI+360)%360:(180-street.spawn.yaw*180/Math.PI+360)%360;}
+  const[sx,sz]=street.snapRoad(x,z);const[la,lo]=street.toLatLon(sx,sz);heading=Math.round(heading||0);
+  $('#svFrame').src=`https://maps.google.com/maps?layer=c&cbll=${la},${lo}&cbp=11,${heading},0,0,0&output=svembed`;
+  let n=name;if(!n){const sn=street.streetName(x,z);n=sn?'Đường '+sn+', Quận 1':'Khu Nguyễn Huệ, Quận 1';}$('#svWhere').textContent='Ảnh thật · '+n;
+  keys.clear();svOpen=true;$('#sv').hidden=false;$('#bSv').innerHTML='Quay lại game <kbd>V</kbd>';}
+function closeSV(){if(!svOpen)return;svOpen=false;$('#sv').hidden=true;$('#svFrame').src='about:blank';$('#bSv').innerHTML='Ảnh thật <kbd>V</kbd>';}
+$('#bSv').onclick=()=>svOpen?closeSV():openSV();$('#svClose').onclick=closeSV;
+$('#selSv').onclick=()=>{if(mapSel){const p=playerXZ();const h=(Math.atan2(mapSel.x-p.x,-(mapSel.z-p.z))*180/Math.PI+360)%360;openSV(mapSel.x,mapSel.z,h,mapSel.n);}};
+APP.openSV=openSV;
 setInterval(()=>{if(mapOpen){updMapWhere();drawMap();}},500);
 APP._dbg={player,hum,camera,brewTea,openFridge,closeFridge,takeFromFridge,useHeld,putDown,pickUp,throwTrash,mug,loose,items,setYaw:v=>{yaw=v;},setPitch:v=>{pitch=v;},setDist:v=>{dist=v;},get held(){return held;},get busy(){return busy;}};
 APP.goOut=goOut;APP.goHome=()=>{if(where==='street')goHome();};APP.sitSofa=()=>{if(where==='room'&&mode==='walk')sitSofa();};

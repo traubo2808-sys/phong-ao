@@ -39,6 +39,12 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 #minimap{width:180px;height:180px;border-radius:50%;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #minimapBox small{font-size:10px;color:var(--soft);background:var(--panel);padding:2px 8px;border-radius:8px}
 #fade{position:fixed;inset:0;z-index:15;background:#0d0b12;opacity:0;transition:opacity .4s;display:grid;place-items:center;font-family:var(--display);font-size:18px;color:var(--soft)}
+#sv{position:fixed;inset:0;z-index:14;background:#0c0a12;display:flex;flex-direction:column}
+#sv iframe{flex:1;border:0;width:100%;background:#1a1622}
+.svbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:10px;padding:10px 14px;border-radius:16px}
+.svbar b{display:block;font-size:16px}.svbar small{color:var(--soft);font-size:12px}
+#svClose,.svbtn{border:0;border-radius:12px;padding:9px 14px;font:600 14px inherit;font-family:inherit;cursor:pointer;background:rgba(143,195,255,.92);color:#14202e;white-space:nowrap}
+#svClose kbd{margin-left:6px}
 #bigmap{position:fixed;inset:0;z-index:12;display:grid;place-items:center;background:rgba(8,6,14,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .mapwrap{display:flex;gap:0;width:min(1120px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px));overflow:hidden;padding:0}
 .mapleft{position:relative;flex:1;min-width:0;background:#d8d2c6}
@@ -186,12 +192,13 @@ textarea.note{width:100%;height:440px;background:#1c1c1e;color:#fff;border:0;bor
 </div>
 <div class="tools">
   <button class="glass tbtn" id="bHome" title="Về phòng ngay (H)" hidden style="background:rgba(255,180,122,.9);color:#2a1a20">Về nhà <kbd>H</kbd></button>
+  <button class="glass tbtn" id="bSv" title="Xem ảnh đường phố thật của Google ngay chỗ bạn đứng (V)" style="background:rgba(143,195,255,.9);color:#14202e">Ảnh thật <kbd>V</kbd></button>
   <button class="glass tbtn" id="bMap" title="Mở bản đồ (M)">Bản đồ <kbd>M</kbd></button>
   <button class="glass tbtn" id="bPhone" title="Mở điện thoại (Q)">Điện thoại <kbd>Q</kbd></button>
-  <button class="glass tbtn" id="bRain" title="Bật/tắt riêng tiếng mưa">Tiếng mưa: bật</button>
+  <button class="glass tbtn" id="bRain" hidden title="Bật/tắt riêng tiếng mưa">Tiếng mưa: bật</button>
   <button class="glass tbtn" id="bSound" title="Bật/tắt âm thanh">Âm thanh: bật</button>
 </div>
-<div class="glass keys" id="keys"><b>W A S D</b>đi · <b>Shift</b>chạy · <b>R</b>luôn chạy · <b>Space</b>nhảy · <b>Kéo chuột</b>xoay nhìn<br><b>E</b>dùng / cầm · <b>F</b>ăn, uống · <b>G</b>đặt xuống · <b>Bấm chuột</b>vào đồ vật · <b>Q</b>điện thoại · <b>M</b>bản đồ · <b>T</b>đổi phố 3D · <b>Esc</b>thoát</div>
+<div class="glass keys" id="keys"><b>W A S D</b>đi · <b>Shift</b>chạy · <b>R</b>luôn chạy · <b>Space</b>nhảy · <b>Kéo chuột</b>xoay nhìn<br><b>E</b>dùng / cầm · <b>F</b>ăn, uống · <b>G</b>đặt xuống · <b>Bấm chuột</b>vào đồ vật · <b>Q</b>điện thoại · <b>V</b>ảnh thật · <b>M</b>bản đồ · <b>T</b>đổi phố 3D · <b>Esc</b>thoát</div>
 <div id="minimapBox" hidden><canvas id="minimap" width="180" height="180" aria-label="Bản đồ nhỏ"></canvas><small id="mapAttr">© OpenStreetMap</small></div>
 <div id="fade" hidden><span></span></div>
 <div id="bigmap" hidden>
@@ -204,11 +211,15 @@ textarea.note{width:100%;height:440px;background:#1c1c1e;color:#fff;border:0;bor
     <div class="mapright">
       <div class="maphead"><h2>Bản đồ</h2><button class="mx" id="mapClose" aria-label="Đóng bản đồ">✕</button></div>
       <input id="mapq" type="text" placeholder="Tìm đường, toà nhà, quán…" autocomplete="off" aria-label="Tìm địa điểm">
-      <div id="mapSel" class="mapsel" hidden><b id="selName"></b><small id="selKind"></small><div class="selbtns"><button id="selGo">Tele tới đây</button><a id="selGm" href="#" target="_blank" rel="noopener">Xem trên Google Maps ↗</a></div></div>
+      <div id="mapSel" class="mapsel" hidden><b id="selName"></b><small id="selKind"></small><div class="selbtns"><button id="selGo">Tele tới đây</button><button id="selSv" class="svbtn">Xem ảnh thật</button><a id="selGm" href="#" target="_blank" rel="noopener">Xem trên Google Maps ↗</a></div></div>
       <div id="maplist" class="maplist"></div>
       <small class="mapsrc">Dữ liệu bản đồ © OpenStreetMap · khu Nguyễn Huệ, Quận 1</small>
     </div>
   </div>
+</div>
+<div id="sv" hidden>
+  <div class="svbar glass"><div><b id="svWhere">Ảnh đường phố thật</b><small>Kéo chuột để nhìn quanh · bấm mũi tên trên mặt đường để đi tới · lăn chuột để phóng to</small></div><button id="svClose">Quay lại game <kbd>V</kbd></button></div>
+  <iframe id="svFrame" title="Google Street View" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
 </div>
 <div class="glass" id="prompt" hidden><kbd>E</kbd><span id="promptTxt"></span></div>
 <div class="glass" id="panel" hidden></div>
