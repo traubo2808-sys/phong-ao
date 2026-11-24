@@ -254,5 +254,14 @@ export async function buildStreet(opts){
         L.s.visible=true;L.s.position.set(p.x,p.bld?Math.min(p.h+4,60):4.2,p.z);const sc=p.bld?clamp(c.d*.06,5,12):clamp(c.d*.08,2.6,5);L.s.scale.set(sc,sc*.1875,1);});}
     return{traffic:motoFrac*.8+carFrac*.4};}
 
-  return{debug:{crownI,trunkI,sun,hemi},scene,spawn,update,collide,interactables,drawMinimap,streetName,occluders:bMeshes,homeDoor:door,counts:{blds:blds.length,osm:data.buildings.length,roads:roads.length,pois:pois.length,trees:treePos.length,lamps:lampPos.length}};
+  /* ---------- địa điểm cho bản đồ lớn & dịch chuyển ---------- */
+  const LAT0=data.origin[0],LON0=data.origin[1],KXm=111320*Math.cos(LAT0*Math.PI/180),KZm=110540;
+  const toLatLon=(x,z)=>[+(LAT0-z/KZm).toFixed(6),+(LON0+x/KXm).toFixed(6)];
+  const places=[{n:'Nhà của tôi (chung cư 42 Nguyễn Huệ)',x:spawn.x,z:spawn.z,k:'home'}];
+  {const seen=new Set();for(const r of roads){if(!r.n||seen.has(r.n))continue;seen.add(r.n);let best=null,bl=0;for(const o of roads.filter(q=>q.n===r.n))for(let i=0;i<o.p.length-1;i++){const L=seglen(o,i);if(L>bl){bl=L;best=[(o.p[i][0]+o.p[i+1][0])/2,(o.p[i][1]+o.p[i+1][1])/2];}}if(best)places.push({n:'Đường '+r.n,x:best[0],z:best[1],k:'street'});}}
+  for(const b of named)places.push({n:b.n,x:b.x,z:b.z,k:'bld'});
+  for(const p of pois)places.push({n:p.n,x:p.x,z:p.z,k:p.k});
+  function safeSpot(x,z){if(!inBld(x,z,.7))return[x,z];for(let r=1;r<80;r+=.8)for(let a=0;a<24;a++){const px=x+Math.cos(a/24*6.283)*r,pz=z+Math.sin(a/24*6.283)*r;if(!inBld(px,pz,.7))return[px,pz];}return[spawn.x,spawn.z];}
+  return{mapC,MS,places,toLatLon,safeSpot,ICON,homeDoor:door,
+    debug:{crownI,trunkI,sun,hemi},scene,spawn,update,collide,interactables,drawMinimap,streetName,occluders:bMeshes,homeDoor:door,counts:{blds:blds.length,osm:data.buildings.length,roads:roads.length,pois:pois.length,trees:treePos.length,lamps:lampPos.length}};
 }

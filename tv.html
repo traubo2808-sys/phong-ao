@@ -167,7 +167,10 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;text-a
 #player{background:#000}
 #pbg{position:absolute;inset:-40px;background:#000 center/cover;filter:blur(40px) brightness(.45);opacity:0;transition:opacity .4s}
 #ytwrap{position:absolute;inset:0;transition:transform .35s,opacity .35s}
-#ytwrap iframe{width:100%;height:100%;pointer-events:none;border:0}
+#ytwrap iframe{width:100%;height:100%;border:0}
+/* lớp bắt bấm chuột phủ video, chừa góc dưới bên phải để bấm được nút "Bỏ qua quảng cáo" của YouTube */
+#pclick{position:absolute;inset:0;clip-path:polygon(0 0,100% 0,100% 62%,70% 62%,70% 100%,0 100%)}
+.pov{pointer-events:none}
 #player.shorts #pbg{opacity:1}
 #player.shorts #ytwrap{left:355px;right:355px;top:0;bottom:0;border-radius:14px;overflow:hidden;background:#000}
 #ytwrap.slide-up{animation:su .35s ease-out}#ytwrap.slide-down{animation:sd .35s ease-out}
@@ -316,6 +319,7 @@ body.embed .screen .glass{display:none}
         <div class="layer" id="player" hidden>
           <div id="pbg"></div>
           <div id="ytwrap"><div id="ytplayer"></div></div>
+          <div id="pclick"></div>
           <div class="spinner" id="spin"></div>
           <div class="bigicon" id="bigicon"><svg viewBox="0 0 24 24" id="bigsvg"></svg></div>
           <div class="pov" id="pov">
@@ -703,6 +707,8 @@ let idleT=Date.now();['keydown','click','mousemove','wheel'].forEach(ev=>addEven
 setInterval(()=>{if(on&&layer==='home'&&Date.now()-idleT>180000)show('clockApp');},5000);
 
 window.tvKey=key;window.tvIsOn=()=>on;
+// sau khi bấm vào video YouTube (ví dụ nút bỏ qua quảng cáo), lấy lại bàn phím cho remote
+addEventListener('blur',()=>setTimeout(()=>{const a=document.activeElement;if(a&&a.tagName==='IFRAME'){a.blur();try{window.focus();}catch(e){}}},400));
 show('offL');bias();
 $('#help').textContent='Bấm nút nguồn đỏ trên remote để bật TV. '+$('#help').textContent;
 </script>

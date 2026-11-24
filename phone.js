@@ -31,7 +31,7 @@ function render(){view.className='papp';const n=now();$('#pTime').textContent=n.
       ${app('home2','🏠','linear-gradient(135deg,#ffb47a,#ff7a59)','Nhà')}${app('weather','🌤️','linear-gradient(135deg,#4facfe,#2a6fdb)','Thời tiết')}${app('clock','⏰','#1c1c1e','Đồng hồ')}${app('calc','🧮','#333','Máy tính')}
       ${app('notes','📝','linear-gradient(135deg,#ffe082,#ffca28)','Ghi chú')}${app('camera','📷','#3a3a3c','Camera')}${app('photos','🖼️','linear-gradient(135deg,#fff,#ddd)','Ảnh')}<button class="ap" id="flashBtn"><i style="background:${flash?'#fff':'#2c2c2e'}">🔦</i><span>Đèn pin</span></button>
       ${linkApp('facebook')}${linkApp('messenger')}${linkApp('youtube')}${linkApp('tiktok')}
-      ${linkApp('gmail')}${app('settings','⚙️','#636366','Cài đặt')}</div>
+      ${linkApp('gmail')}<button class="ap" id="mapApp"><i style="background:linear-gradient(135deg,#7fd36b,#2f8f5a)">🗺️</i><span>Bản đồ</span></button>${app('settings','⚙️','#636366','Cài đặt')}</div>
       <div class="dock">${app('dial','📞','#34c759','Điện thoại')}${linkApp('zalo')}${linkApp('google')}${app('camera','📷','#3a3a3c','Camera')}</div>`;}
   else if(screen==='home2'){const d=APP.dev.get();const row=(k,t,on,sub='')=>`<button class="li" data-dev="${k}"><span>${t}${sub?`<br><small>${sub}</small>`:''}</span><span class="sw ${on?'on':''}"></span></button>`;
     h=hdr('Nhà của tôi')+`<div class="lst" style="margin-bottom:12px"><button class="li" id="orderFood"><span>🛒 Đặt giao đồ ăn<br><small>Giao tới cửa, bạn cầm vào cất tủ lạnh</small></span><small>›</small></button></div><div class="lst">${row('ceiling','💡 Đèn trần',d.ceiling)}${row('lamp','🛋️ Đèn cây',d.lamp)}${row('curtains','🪟 Rèm cửa sổ',d.curtains,d.curtains?'Đang mở':'Đang kéo')}${row('tv','📺 TV LUMA',d.tv,d.tv?'Đang bật':'Đang tắt')}</div>
@@ -63,6 +63,7 @@ function render(){view.className='papp';const n=now();$('#pTime').textContent=n.
 function fmtTimer(){const s=Math.max(0,Math.ceil(timer.run?(timer.end-Date.now())/1000:timer.left));return`${pad(Math.floor(s/60))}:${pad(s%60)}`;}
 function bind(){
   view.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.stopPropagation();go(b.dataset.go);});
+  const ma=$('#mapApp');if(ma)ma.onclick=()=>{close();APP.emit('map:open');};
   const of=$('#orderFood');if(of)of.onclick=()=>{APP.emit('order');close();};
   const fb=$('#flashBtn');if(fb)fb.onclick=()=>{flash=!flash;APP.emit('flashlight',flash);APP.sfx&&APP.sfx.pop();render();};
   view.querySelectorAll('[data-dev]').forEach(b=>b.onclick=()=>{const k=b.dataset.dev,d=APP.dev.get();if(k==='tv')APP.dev.set('tv');else APP.dev.set(k,!d[k]);setTimeout(render,k==='tv'?400:0);});

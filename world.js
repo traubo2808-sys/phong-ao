@@ -120,13 +120,14 @@ let plantPerk=0;
 
 /* ================= đồng hồ treo tường ================= */
 const clockTex=ctex(256,256,()=>{});
-const clock=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.04,48),[M({color:0x3a2c25}),M({map:clockTex,roughness:.6}),M({color:0x3a2c25})]);clock.rotation.x=Math.PI/2;clock.position.set(-2.7,2.05,-2.98);scene.add(clock);
+const clock=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.04,48),M({color:0x3a2c25}));clock.rotation.x=Math.PI/2;clock.position.set(-2.7,2.05,-2.98);scene.add(clock);
+{const face=new THREE.Mesh(new THREE.CircleGeometry(.225,48),M({map:clockTex,roughness:.6}));face.position.set(-2.7,2.05,-2.957);scene.add(face);face.userData.inter=null;var clockFace=face;}
 function drawClock(){const{g}=clockTex.userData,d=new Date();g.clearRect(0,0,256,256);g.fillStyle='#f4ecdf';g.beginPath();g.arc(128,128,124,0,7);g.fill();g.fillStyle='#3a2c25';
   for(let i=0;i<12;i++){const a=i/12*Math.PI*2;g.save();g.translate(128,128);g.rotate(a);g.fillRect(-2,-112,4,i%3?10:20);g.restore();}
   const hand=(a,l,w,c)=>{g.save();g.translate(128,128);g.rotate(a);g.fillStyle=c;g.fillRect(-w/2,-l,w,l+12);g.restore();};
   const s=d.getSeconds(),m=d.getMinutes()+s/60,h=d.getHours()%12+m/60;hand(h/12*Math.PI*2,62,9,'#2a2026');hand(m/60*Math.PI*2,92,6,'#2a2026');hand(s/60*Math.PI*2,100,2,'#d9534f');g.fillStyle='#2a2026';g.beginPath();g.arc(128,128,8,0,7);g.fill();clockTex.needsUpdate=true;}
 drawClock();setInterval(drawClock,1000);
-addInter({name:'clock',pos:new THREE.Vector3(-2.7,0,-2.4),r:1.4,label:()=>'Xem giờ, đặt báo thức',act:()=>APP.emit('phone:open','clock'),meshes:[clock]});
+addInter({name:'clock',pos:new THREE.Vector3(-2.7,0,-2.4),r:1.4,label:()=>'Xem giờ, đặt báo thức',act:()=>APP.emit('phone:open','clock'),meshes:[clock,clockFace]});
 
 /* ================= tủ lạnh ================= */
 const FX=-3.62,FZ=-2.3,fridge=new THREE.Group();scene.add(fridge);
@@ -431,6 +432,8 @@ addEventListener('keydown',e=>{const tag=e.target.tagName;if(tag==='INPUT'||tag=
   if(mode==='tv'||mode==='sit'){const map={arrowup:'up',arrowdown:'down',arrowleft:'left',arrowright:'right',enter:'ok',backspace:'back',' ':'play','+':'volup','=':'volup','-':'voldown',pageup:'chup',pagedown:'chdown'};
     if(k==='escape'){exitMode();e.preventDefault();return;}if(map[k]){tvKey(map[k]);e.preventDefault();return;}if(k==='q'){APP.emit('phone:toggle');return;}return;}
   if(mode==='lie'){if(k==='escape'||k==='e'||k==='w'){exitMode();}return;}
+  if(mapOpen){if(k==='escape'||k==='m')closeMap();return;}
+  if(k==='m'&&mode==='walk'){openMap();return;}
   if(mode==='fridge'){if(k==='escape'||k==='e'){closeFridge();}return;}
   if(k==='escape'){if(phoneOpen){APP.emit('phone:close');return;}if(panelFn){closePanel();return;}return;}
   if(k==='q'){APP.emit('phone:toggle');return;}
@@ -480,13 +483,14 @@ function exitMode(){if(mode==='walk')return;if(mode==='fridge'){closeFridge();re
   camTween=null;try{window.focus();}catch(e){}}
 /* ================= ra phố / về phòng ================= */
 function fade(on,txt){const f=$('#fade');f.querySelector('span').textContent=txt||'';if(on){f.hidden=false;requestAnimationFrame(()=>f.style.opacity=1);}else{f.style.opacity=0;setTimeout(()=>f.hidden=true,450);}}
-async function goOut(){if(streetBuilding||where==='street')return;closePanel();sfx.door();fade(true,street?'':'Đang dựng khu phố Nguyễn Huệ từ bản đồ thật…');streetBuilding=true;
-  try{if(!street){await new Promise(r=>setTimeout(r,450));street=await buildStreet({player,toast:(m)=>APP.toast(m,4200),onHome:goHome});}}
+const streetOpts=()=>({player,toast:(m)=>APP.toast(m,4200),onHome:goHome});
+async function goOut(target){if(streetBuilding||where==='street')return;closePanel();sfx.door();fade(true,street?'':'Đang dựng khu phố Nguyễn Huệ từ bản đồ thật…');streetBuilding=true;
+  try{if(!street){await new Promise(r=>setTimeout(r,450));street=await buildStreet(streetOpts());}}
   catch(e){console.error(e);streetBuilding=false;fade(false);APP.toast('Không dựng được khu phố: '+e.message);return;}
-  streetBuilding=false;APP._street=street;scene.remove(player);street.scene.add(player);const s=street.spawn;player.position.set(s.x,0,s.z);player.rotation.y=s.yaw;yaw=s.yaw+Math.PI;pitch=.28;dist=4.2;
+  streetBuilding=false;APP._street=street;scene.remove(player);street.scene.add(player);const s=street.spawn;let spx=s.x,spz=s.z;if(target&&target.x!=null)[spx,spz]=street.safeSpot(target.x,target.z);player.position.set(spx,0,spz);player.rotation.y=s.yaw;yaw=s.yaw+Math.PI;pitch=.28;dist=4.2;
   where='street';camTween=null;$('#css3d').hidden=true;$('#minimapBox').hidden=false;$('#bHome').hidden=false;$('#hRoomLbl').textContent='Đang ở';
-  camera.position.set(s.x-Math.sin(s.yaw)*4,2.5,s.z-Math.cos(s.yaw)*4);camera.lookAt(s.x,1.5,s.z);
-  setTimeout(()=>{fade(false);APP.toast('Bạn đang đứng trước chung cư 42 Nguyễn Huệ. Bản đồ thật từ OpenStreetMap.',5000);},200);}
+  camera.position.set(spx-Math.sin(s.yaw)*4,2.5,spz-Math.cos(s.yaw)*4);camera.lookAt(spx,1.5,spz);
+  setTimeout(()=>{fade(false);APP.toast(target&&target.n?'Đã tới: '+target.n:'Bạn đang đứng trước chung cư 42 Nguyễn Huệ. Bấm M để mở bản đồ.',4500);},200);}
 function goHome(){fade(true);setTimeout(()=>{street.scene.remove(player);scene.add(player);player.position.set(2.575,0,2.3);player.rotation.y=Math.PI;yaw=0;pitch=.3;dist=3.2;where='room';
   $('#css3d').hidden=false;$('#minimapBox').hidden=true;$('#bHome').hidden=true;$('#hRoomLbl').textContent='Trong phòng';camera.position.set(2.575,2,3.5);sfx.door();updHud();fade(false);},350);}
 document.querySelectorAll('#remote [data-k]').forEach(b=>b.addEventListener('click',()=>{sfx.beep&&sfx.pop();tvKey(b.dataset.k);}));
@@ -580,7 +584,7 @@ function updHud(){const d=new Date(),p=n=>String(n).padStart(2,'0');$('#hTime').
   else{$('#hRoom').textContent=st.roomTemp.toFixed(1)+'°';$('#hRoom').style.fontSize='';}}
 
 function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
-  let moving=false;if(started&&mode==='walk'&&!phoneOpen)moving=moveChar(dt);
+  let moving=false;if(started&&mode==='walk'&&!phoneOpen&&!mapOpen)moving=moveChar(dt);
   animChar(moving,dt);updCam(dt);updCat(dt);const env=updEnv(dt);updHeld();
   if(where==='street'){const r=street.update(dt,env,player);sfx.set('traffic',.05+.12*r.traffic);hornT-=dt*r.traffic;if(hornT<0){hornT=rnd(1.5,6);sfx.horn(Math.hypot(1,1));}
     mapT-=dt;if(mapT<0){mapT=.05;street.drawMinimap($('#minimap'),player.position.x,player.position.z,player.rotation.y);}
@@ -634,6 +638,56 @@ $('#bPhone').onclick=()=>APP.emit('phone:toggle');
 $('#bHome').onclick=()=>{if(where==='street')goHome();};
 APP.on('weather',()=>{updHud();skyT=0;});
 APP.on('alarm',()=>sfx.alarm());
+/* ================= bản đồ lớn: xem vị trí, tìm địa điểm, dịch chuyển ================= */
+let mapOpen=false,mapView={cx:0,cz:0,zoom:1},mapSel=null,mapDrag=null;
+const mcv=$('#mapcv'),mg=mcv.getContext('2d');
+const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'d').toLowerCase();
+const KINDV={home:'Nhà của bạn',street:'Đường phố',bld:'Toà nhà',pin:'Điểm đã chọn',cafe:'Quán cà phê',restaurant:'Nhà hàng',fast_food:'Đồ ăn nhanh',bar:'Quán bar',pub:'Quán bia',hotel:'Khách sạn',bank:'Ngân hàng',atm:'ATM',pharmacy:'Nhà thuốc',clothes:'Cửa hàng quần áo',bakery:'Tiệm bánh',books:'Nhà sách',ice_cream:'Quán kem',supermarket:'Siêu thị',convenience:'Cửa hàng tiện lợi',museum:'Bảo tàng',theatre:'Nhà hát',cinema:'Rạp phim',place_of_worship:'Nơi thờ tự',fuel:'Cây xăng',parking:'Bãi giữ xe'};
+const kindIcon=k=>k==='home'?'🏠':k==='street'?'🛣️':k==='bld'?'🏢':k==='pin'?'📍':(street.ICON[k]||'📍');
+const kindName=k=>KINDV[k]||'Địa điểm';
+const gmUrl=(x,z)=>{const[la,lo]=street.toLatLon(x,z);return`https://www.google.com/maps/search/?api=1&query=${la},${lo}`;};
+function playerXZ(){return where==='street'?{x:player.position.x,z:player.position.z}:{x:street.spawn.x,z:street.spawn.z};}
+async function openMap(){if(mapOpen||streetBuilding)return;if(mode!=='walk')exitMode();if(phoneOpen)APP.emit('phone:close');
+  if(!street){fade(true,'Đang tải bản đồ khu phố…');streetBuilding=true;try{street=await buildStreet(streetOpts());}catch(e){streetBuilding=false;fade(false);APP.toast('Không tải được bản đồ: '+e.message);return;}streetBuilding=false;fade(false);}
+  mapOpen=true;keys.clear();const p=playerXZ();mapView={cx:p.x,cz:p.z,zoom:1.4};mapSel=null;$('#mapSel').hidden=true;$('#mapq').value='';$('#bigmap').hidden=false;
+  const r=mcv.getBoundingClientRect();mcv.width=Math.round(r.width);mcv.height=Math.round(r.height);renderMapList();updMapWhere();drawMap();}
+function closeMap(){if(!mapOpen)return;mapOpen=false;$('#bigmap').hidden=true;$('#mapq').blur();}
+function w2c(x,z){return[mcv.width/2+(x-mapView.cx)*mapView.zoom,mcv.height/2+(z-mapView.cz)*mapView.zoom];}
+function c2w(px,py){return[mapView.cx+(px-mcv.width/2)/mapView.zoom,mapView.cz+(py-mcv.height/2)/mapView.zoom];}
+function drawMap(){if(!mapOpen)return;const W=mcv.width,H=mcv.height,MS=street.MS,z=mapView.zoom;mg.fillStyle='#d8d2c6';mg.fillRect(0,0,W,H);
+  const sw=W/z*MS,sh=H/z*MS;mg.imageSmoothingEnabled=true;mg.drawImage(street.mapC,500+mapView.cx*MS-sw/2,500+mapView.cz*MS-sh/2,sw,sh,0,0,W,H);
+  mg.textAlign='center';mg.textBaseline='middle';
+  for(const p of street.places){if(p.k!=='street'&&p.k!=='bld')continue;if(p.k==='bld'&&z<1.6)continue;const[x,y]=w2c(p.x,p.z);if(x<-50||y<0||x>W+50||y>H)continue;
+    mg.font=(p.k==='street'?'700 13px':'500 11px')+' "Be Vietnam Pro",sans-serif';const t=p.k==='street'?p.n.replace('Đường ',''):p.n;mg.lineWidth=4;mg.strokeStyle='rgba(255,255,255,.92)';mg.strokeText(t,x,y);mg.fillStyle=p.k==='street'?'#3b3240':'#7a5c40';mg.fillText(t,x,y);}
+  if(z>=2.4){mg.font='15px sans-serif';for(const p of street.places){if(p.k==='street'||p.k==='bld'||p.k==='home')continue;const[x,y]=w2c(p.x,p.z);if(x<0||y<0||x>W||y>H)continue;mg.fillText(kindIcon(p.k),x,y);}}
+  {const[x,y]=w2c(street.spawn.x,street.spawn.z);mg.font='22px sans-serif';mg.fillText('🏠',x,y-8);}
+  if(mapSel){const[x,y]=w2c(mapSel.x,mapSel.z);mg.fillStyle='#e8453c';mg.beginPath();mg.arc(x,y-16,10,Math.PI,0);mg.lineTo(x,y);mg.closePath();mg.fill();mg.fillStyle='#fff';mg.beginPath();mg.arc(x,y-16,4,0,7);mg.fill();}
+  const p=playerXZ(),[px,py]=w2c(p.x,p.z);mg.fillStyle='rgba(47,111,224,.2)';mg.beginPath();mg.arc(px,py,24,0,7);mg.fill();
+  mg.save();mg.translate(px,py);mg.rotate(Math.PI-(where==='street'?player.rotation.y:street.spawn.yaw));mg.fillStyle='#2f6fe0';mg.strokeStyle='#fff';mg.lineWidth=2.5;mg.beginPath();mg.moveTo(0,-13);mg.lineTo(9,10);mg.lineTo(0,4);mg.lineTo(-9,10);mg.closePath();mg.fill();mg.stroke();mg.restore();
+  mg.fillStyle='rgba(24,19,33,.8)';mg.beginPath();mg.arc(30,30,18,0,7);mg.fill();mg.fillStyle='#fff';mg.font='bold 13px sans-serif';mg.fillText('B',30,25);mg.fillText('↑',30,38);}
+function nearestPlace(x,z,rad){let best=null,bd=rad;for(const p of street.places){if(p.k==='street')continue;const d=Math.hypot(p.x-x,p.z-z);if(d<bd){bd=d;best=p;}}return best;}
+function selectPlace(p,center){mapSel=p;$('#mapSel').hidden=false;$('#selName').textContent=kindIcon(p.k)+' '+p.n;
+  const d=Math.round(Math.hypot(p.x-playerXZ().x,p.z-playerXZ().z));$('#selKind').textContent=`${kindName(p.k)} · cách bạn khoảng ${d>=1000?(d/1000).toFixed(1)+' km':d+' m'}`;$('#selGm').href=gmUrl(p.x,p.z);
+  if(center){mapView.cx=p.x;mapView.cz=p.z;mapView.zoom=Math.max(mapView.zoom,2.2);}drawMap();}
+function renderMapList(){const q=norm($('#mapq').value.trim());let list=street.places;
+  if(q)list=list.filter(p=>norm(p.n).includes(q));else list=list.filter(p=>p.k==='home'||p.k==='street'||p.k==='bld');
+  const box=$('#maplist');box.innerHTML=list.slice(0,120).map((p,i)=>`<button class="mitem" data-i="${street.places.indexOf(p)}"><i>${kindIcon(p.k)}</i><span>${p.n.replace(/[<>&]/g,'')}</span><small>${kindName(p.k)}</small></button>`).join('')||'<small style="color:var(--soft);padding:10px">Không tìm thấy. Thử gõ tên khác, không cần dấu.</small>';
+  box.querySelectorAll('.mitem').forEach(b=>b.onclick=()=>{box.querySelectorAll('.mitem').forEach(x=>x.classList.toggle('on',x===b));selectPlace(street.places[+b.dataset.i],true);});}
+function updMapWhere(){const p=playerXZ();let txt='Trong phòng · chung cư 42 Nguyễn Huệ, Quận 1';if(where==='street'){const n=street.streetName(p.x,p.z);txt='Đang ở '+(n?'đường '+n:'khu Nguyễn Huệ')+', Quận 1';}$('#mapWhere').textContent=txt;$('#gmLink').href=gmUrl(p.x,p.z);}
+function teleport(p){closeMap();if(where!=='street'){goOut(p);return;}fade(true);sfx.door();setTimeout(()=>{const[x,z]=street.safeSpot(p.x,p.z);player.position.set(x,0,z);vy=0;camera.position.set(x-Math.sin(player.rotation.y)*4,3,z-Math.cos(player.rotation.y)*4);updHud();fade(false);APP.toast('Đã tới: '+p.n,3000);},380);}
+mcv.addEventListener('pointerdown',e=>{mapDrag={x:e.offsetX,y:e.offsetY,m:0};mcv.setPointerCapture(e.pointerId);});
+mcv.addEventListener('pointermove',e=>{if(!mapDrag)return;const dx=e.offsetX-mapDrag.x,dy=e.offsetY-mapDrag.y;mapDrag.m+=Math.abs(dx)+Math.abs(dy);mapDrag.x=e.offsetX;mapDrag.y=e.offsetY;mapView.cx-=dx/mapView.zoom;mapView.cz-=dy/mapView.zoom;drawMap();});
+mcv.addEventListener('pointerup',e=>{if(mapDrag&&mapDrag.m<5){const[x,z]=c2w(e.offsetX,e.offsetY);selectPlace(nearestPlace(x,z,14/mapView.zoom)||{n:'Điểm đã chọn trên bản đồ',x,z,k:'pin'});}mapDrag=null;});
+mcv.addEventListener('wheel',e=>{e.preventDefault();const[wx,wz]=c2w(e.offsetX,e.offsetY);mapView.zoom=clamp(mapView.zoom*(e.deltaY<0?1.2:1/1.2),.5,6);const[nx,nz]=c2w(e.offsetX,e.offsetY);mapView.cx+=wx-nx;mapView.cz+=wz-nz;drawMap();},{passive:false});
+$('#mzIn').onclick=()=>{mapView.zoom=clamp(mapView.zoom*1.4,.5,6);drawMap();};$('#mzOut').onclick=()=>{mapView.zoom=clamp(mapView.zoom/1.4,.5,6);drawMap();};
+$('#mzMe').onclick=()=>{const p=playerXZ();mapView.cx=p.x;mapView.cz=p.z;drawMap();};
+$('#selGo').onclick=()=>{if(mapSel)teleport(mapSel);};$('#mapClose').onclick=closeMap;
+$('#bigmap').addEventListener('pointerdown',e=>{if(e.target.id==='bigmap')closeMap();});
+$('#mapq').addEventListener('input',renderMapList);
+$('#mapq').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')closeMap();if(e.key==='Enter'){const b=$('#maplist .mitem');if(b)b.click();}});
+$('#bMap').onclick=()=>mapOpen?closeMap():openMap();
+APP.on('map:open',()=>openMap());
+setInterval(()=>{if(mapOpen){updMapWhere();drawMap();}},500);
 APP._dbg={player,hum,camera,brewTea,openFridge,closeFridge,takeFromFridge,useHeld,putDown,pickUp,throwTrash,mug,loose,items,setYaw:v=>{yaw=v;},setPitch:v=>{pitch=v;},setDist:v=>{dist=v;},get held(){return held;},get busy(){return busy;}};
 APP.goOut=goOut;APP.goHome=()=>{if(where==='street')goHome();};APP.sitSofa=()=>{if(where==='room'&&mode==='walk')sitSofa();};
 APP.ready=true;
