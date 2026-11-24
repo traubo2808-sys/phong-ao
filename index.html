@@ -172,7 +172,7 @@ textarea.note{width:100%;height:440px;background:#1c1c1e;color:#fff;border:0;bor
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 <script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/","3d-tiles-renderer":"https://esm.sh/3d-tiles-renderer@0.4.28?external=three","3d-tiles-renderer/plugins":"https://esm.sh/3d-tiles-renderer@0.4.28/plugins?external=three"}}
 </script>
 </head>
 <body>
@@ -191,8 +191,8 @@ textarea.note{width:100%;height:440px;background:#1c1c1e;color:#fff;border:0;bor
   <button class="glass tbtn" id="bRain" title="Bật/tắt riêng tiếng mưa">Tiếng mưa: bật</button>
   <button class="glass tbtn" id="bSound" title="Bật/tắt âm thanh">Âm thanh: bật</button>
 </div>
-<div class="glass keys" id="keys"><b>W A S D</b>đi · <b>Shift</b>chạy · <b>R</b>luôn chạy · <b>Space</b>nhảy · <b>Kéo chuột</b>xoay nhìn<br><b>E</b>dùng / cầm · <b>F</b>ăn, uống · <b>G</b>đặt xuống · <b>Bấm chuột</b>vào đồ vật · <b>Q</b>điện thoại · <b>Esc</b>thoát</div>
-<div id="minimapBox" hidden><canvas id="minimap" width="180" height="180" aria-label="Bản đồ nhỏ"></canvas><small>© OpenStreetMap</small></div>
+<div class="glass keys" id="keys"><b>W A S D</b>đi · <b>Shift</b>chạy · <b>R</b>luôn chạy · <b>Space</b>nhảy · <b>Kéo chuột</b>xoay nhìn<br><b>E</b>dùng / cầm · <b>F</b>ăn, uống · <b>G</b>đặt xuống · <b>Bấm chuột</b>vào đồ vật · <b>Q</b>điện thoại · <b>M</b>bản đồ · <b>T</b>đổi phố 3D · <b>Esc</b>thoát</div>
+<div id="minimapBox" hidden><canvas id="minimap" width="180" height="180" aria-label="Bản đồ nhỏ"></canvas><small id="mapAttr">© OpenStreetMap</small></div>
 <div id="fade" hidden><span></span></div>
 <div id="bigmap" hidden>
   <div class="mapwrap glass">
@@ -248,6 +248,7 @@ window.APP={
 };
 setInterval(()=>APP.save(),5000);addEventListener('pagehide',()=>APP.save());
 </script>
+<script src="config.js"></script>
 <script type="module" src="world.js"></script>
 <script type="module" src="phone.js"></script>
 </body>

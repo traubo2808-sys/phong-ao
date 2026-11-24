@@ -13,6 +13,7 @@ export async function buildStreet(opts){
   const data=await (await fetch('q1.json')).json();
   const scene=new THREE.Scene();
   const M=o=>new THREE.MeshStandardMaterial(o);
+  const procStart=scene.children.length;
 
   /* ---------- lưới tra cứu ---------- */
   const CELL=24,grid=new Map();const key=(i,j)=>i+','+j;
@@ -79,7 +80,7 @@ export async function buildStreet(opts){
   const groundTex=ctex(256,256,(g,w,h)=>{g.fillStyle='#9b968c';g.fillRect(0,0,w,h);g.strokeStyle='rgba(60,55,50,.25)';g.lineWidth=2;for(let i=0;i<=w;i+=32){g.beginPath();g.moveTo(i,0);g.lineTo(i,h);g.stroke();g.beginPath();g.moveTo(0,i);g.lineTo(w,i);g.stroke();}for(let i=0;i<2500;i++){g.fillStyle=`rgba(0,0,0,${rnd(0,.06)})`;g.fillRect(rnd(0,w),rnd(0,h),2,2);}});
   groundTex.repeat.set(250,250);
   const groundMat=M({map:groundTex,roughness:.95});
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),groundMat);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),groundMat);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);const flatStart=scene.children.length-1;
   function ribbonGeo(list,y,uvLen){const P=[],U=[];for(const{p,w}of list){let acc=0;for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz);if(L<.01)continue;const nx=-dz/L*w/2,nz=dx/L*w/2;
       const A=[a[0]+nx,y,a[1]+nz],Bv=[a[0]-nx,y,a[1]-nz],C=[b[0]-nx,y,b[1]-nz],D=[b[0]+nx,y,b[1]+nz];const u0=acc/uvLen,u1=(acc+L)/uvLen;acc+=L;
       P.push(...A,...Bv,...C,...A,...C,...D);U.push(u0,0,u0,1,u1,1,u0,0,u1,1,u1,0);}
@@ -94,6 +95,7 @@ export async function buildStreet(opts){
   {const dash=ctex(64,16,(g)=>{g.clearRect(0,0,64,16);g.fillStyle='#f2eedf';g.fillRect(0,4,36,8);});const mk=new THREE.MeshBasicMaterial({map:dash,transparent:true,depthWrite:false,side:THREE.DoubleSide});mk.map.repeat.set(1,1);
     const m=new THREE.Mesh(ribbonGeo(roads.filter(r=>['primary','secondary','tertiary','trunk'].includes(r.k)).map(r=>({p:r.p,w:.18})),.05,6),mk);scene.add(m);}
 
+  const flats=scene.children.slice(flatStart);// mặt đất, đường, công viên: thay bằng ảnh vệ tinh Google khi có
   /* ---------- cây xanh & đèn đường ---------- */
   const treePos=[],lampPos=[];
   for(const r of roads){if(!VEH.has(r.k)&&r.k!=='pedestrian')continue;const big=['primary','secondary','tertiary','pedestrian','trunk'].includes(r.k);let acc=0,nextT=rnd(2,8),nextL=rnd(4,12);
@@ -114,6 +116,7 @@ export async function buildStreet(opts){
   poleI.castShadow=true;scene.add(poleI,armI,bulbI);
   const nightLights=[];for(let i=0;i<8;i++){const l=new THREE.PointLight(0xffc98a,0,26,1.6);scene.add(l);nightLights.push(l);}
 
+  const procs=scene.children.slice(procStart).filter(o=>!o.isLight);
   /* ---------- cửa nhà ---------- */
   const doorG=new THREE.Group();doorG.position.set(door.x+door.nx*.05,0,door.z+door.nz*.05);doorG.rotation.y=Math.atan2(door.nx,door.nz);scene.add(doorG);
   {const fr=M({color:0x2b2f36});const B=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;doorG.add(o);return o;};
@@ -219,6 +222,10 @@ export async function buildStreet(opts){
   // đặt một bộ phận theo vị trí cục bộ (ox ngang, oy cao, oz trước) của người
   function part(m,i,p,ox,oy,oz,rx){const s=Math.sin(p.yaw),c=Math.cos(p.yaw);setInst(m,i,p.x+ox*c+oz*s,oy,p.z-ox*s+oz*c,p.yaw,1,rx);}
   function update(dt,env,player){T+=dt;const{day,twi,cloud,rainAmt,h,flash}=env;const night=1-day;
+    if(tiles){const ts=tiles.stats,busy=ts.parsing+ts.downloading+ts.queued;if(tiles._et==null)tiles._et=48;
+      if(busy<4&&tiles._et>8)tiles._et=Math.max(8,tiles._et*.85);tiles.errorTarget=tiles._et;opts.camera.updateMatrixWorld();tiles.setResolutionFromRenderer(opts.camera,opts.renderer);tiles.update();{const b=Math.min(1.05,Math.max(.3,.32+(hemi.intensity-.25)*.7));for(const m of tileMats)m.color.setScalar(b);}
+      if(g3dState==='on'){groundT-=dt;if(groundT<0&&groundTries<40){groundT=groundTries<10?.8:3;groundTries++;alignGround(player.position.x,player.position.z);}}
+      attrT-=dt;if(attrT<0){attrT=2;const el=document.getElementById('mapAttr');if(el){let a='';try{a=tiles.getAttributions().map(x=>x.value).filter(v=>typeof v==='string').join(' · ');}catch(e){}el.textContent=g3dState==='on'?('Ảnh 3D © Google'+(a?' · '+a:'')+' · © OpenStreetMap'):'© OpenStreetMap';}}}
     // dân số theo giờ thật
     const pedFrac=h<5?.12:h<7?.35:h<11?.6:h<16?.55:h<23?1:.4,motoFrac=h<5?.15:h<7?.5:h<9?1:h<16?.7:h<20?1:h<23?.6:.25,carFrac=h<5?.25:h<22?.9:.5;
     const rainy=rainAmt>.3;
@@ -261,7 +268,37 @@ export async function buildStreet(opts){
   {const seen=new Set();for(const r of roads){if(!r.n||seen.has(r.n))continue;seen.add(r.n);let best=null,bl=0;for(const o of roads.filter(q=>q.n===r.n))for(let i=0;i<o.p.length-1;i++){const L=seglen(o,i);if(L>bl){bl=L;best=[(o.p[i][0]+o.p[i+1][0])/2,(o.p[i][1]+o.p[i+1][1])/2];}}if(best)places.push({n:'Đường '+r.n,x:best[0],z:best[1],k:'street'});}}
   for(const b of named)places.push({n:b.n,x:b.x,z:b.z,k:'bld'});
   for(const p of pois)places.push({n:p.n,x:p.x,z:p.z,k:p.k});
+  /* ---------- phố 3D thật của Google (qua Cesium ion, mã trong config.js) ---------- */
+  let tiles=null,g3dState='off',groundT=0,groundTries=0,attrT=0;const tileMats=new Set();
+  async function setupGoogle3D(){const tok=(window.LUMA_CESIUM||'').trim();if(!tok||!opts.renderer)return;g3dState='loading';
+    try{const[{TilesRenderer},P,{DRACOLoader}]=await Promise.all([import('3d-tiles-renderer'),import('3d-tiles-renderer/plugins'),import('three/addons/loaders/DRACOLoader.js')]);
+      const t=new TilesRenderer();
+      t.registerPlugin(new P.CesiumIonAuthPlugin({apiToken:tok,assetId:'2275207',autoRefreshToken:true}));
+      t.registerPlugin(new P.GLTFExtensionsPlugin({dracoLoader:new DRACOLoader().setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/')}));
+      t.group.matrixAutoUpdate=false;setFrame(t.group);
+      t.errorTarget=8;try{t.parseQueue.maxJobs=6;t.downloadQueue.maxJobs=24;t.lruCache.minSize=900;t.lruCache.maxSize=1600;}catch(e){}t.setCamera(opts.camera);t.setResolutionFromRenderer(opts.camera,opts.renderer);
+      t.addEventListener('load-model',e=>{e.scene.traverse(o=>{if(o.isMesh){o.receiveShadow=true;o.raycast=THREE.Mesh.prototype.raycast;}});e.scene.traverse(o=>{if(o.isMesh)tileMats.add(o.material);});if(g3dState!=='on'){g3dState='on';flats.forEach(o=>o.visible=false);opts.toast&&opts.toast('Mặt đường đang dùng ảnh vệ tinh thật của Google. Bấm T để đổi sang mặt đường vẽ.');}});
+      t.addEventListener('dispose-model',e=>{e.scene.traverse(o=>{if(o.isMesh)tileMats.delete(o.material);});});
+      t.addEventListener('load-error',e=>{console.warn('3D tiles lỗi',e);if(g3dState!=='on'){g3dState='error';flats.forEach(o=>o.visible=true);opts.toast&&opts.toast('Không tải được phố 3D Google, đang dùng phố tự vẽ.');}});
+      scene.add(t.group);tiles=t;}
+    catch(e){console.warn(e);g3dState='error';}}
+  // chuyển toạ độ Trái Đất (ECEF, WGS84) sang toạ độ phố: x = đông, y = lên, z = nam; gốc ở tâm khu Nguyễn Huệ
+  let groundOff=0;
+  function setFrame(g){const f=LAT0*Math.PI/180,l=LON0*Math.PI/180,a=6378137,e2=6.69437999014e-3,sf=Math.sin(f),cf=Math.cos(f),sl=Math.sin(l),cl=Math.cos(l);
+    const N=a/Math.sqrt(1-e2*sf*sf),O=[N*cf*cl,N*cf*sl,N*(1-e2)*sf];
+    const E=[-sl,cl,0],U=[cf*cl,cf*sl,sf],S=[sf*cl,sf*sl,-cf];
+    const t=R=>-(R[0]*O[0]+R[1]*O[1]+R[2]*O[2]);
+    g.matrix.set(E[0],E[1],E[2],t(E), U[0],U[1],U[2],t(U)+groundOff, S[0],S[1],S[2],t(S), 0,0,0,1);g.matrixWorldNeedsUpdate=true;g.updateMatrixWorld(true);}
+  const groundRay=new THREE.Raycaster();
+  function alignGround(px,pz){// đặt mặt đất của phố 3D về đúng độ cao 0 tại chỗ người chơi
+    groundRay.set(new THREE.Vector3(px,600,pz),new THREE.Vector3(0,-1,0));groundRay.far=1400;
+    const vis=o=>{for(;o;o=o.parent)if(!o.visible)return false;return true;};
+    const h=groundRay.intersectObject(tiles.group,true).find(i=>vis(i.object));
+    if(h){const want=groundOff-h.point.y;if(Math.abs(want)<45&&Math.abs(h.point.y)>.05){groundOff=want;setFrame(tiles.group);}}return !!h;}
+  setupGoogle3D();
   function safeSpot(x,z){if(!inBld(x,z,.7))return[x,z];for(let r=1;r<80;r+=.8)for(let a=0;a<24;a++){const px=x+Math.cos(a/24*6.283)*r,pz=z+Math.sin(a/24*6.283)*r;if(!inBld(px,pz,.7))return[px,pz];}return[spawn.x,spawn.z];}
-  return{mapC,MS,places,toLatLon,safeSpot,ICON,homeDoor:door,
+  let use3D=true;
+  function toggle3D(){if(!tiles||g3dState!=='on')return null;use3D=!use3D;tiles.group.visible=use3D;flats.forEach(o=>o.visible=!use3D);return use3D;}
+  return{toggle3D,get tiles(){return tiles;},get g3dState(){return g3dState;},mapC,MS,places,toLatLon,safeSpot,ICON,homeDoor:door,
     debug:{crownI,trunkI,sun,hemi},scene,spawn,update,collide,interactables,drawMinimap,streetName,occluders:bMeshes,homeDoor:door,counts:{blds:blds.length,osm:data.buildings.length,roads:roads.length,pois:pois.length,trees:treePos.length,lamps:lampPos.length}};
 }

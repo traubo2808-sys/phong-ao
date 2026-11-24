@@ -444,6 +444,7 @@ addEventListener('keydown',e=>{const tag=e.target.tagName;if(tag==='INPUT'||tag=
   if(k==='r'){runLock=!runLock;APP.toast(runLock?'Luôn chạy: bật (bấm R để tắt)':'Luôn chạy: tắt',1500);return;}
   if(k===' '){e.preventDefault();if(player.position.y<.01&&mode==='walk'&&!busy)vy=3.6;return;}
   if(k==='h'&&where==='street'){goHome();return;}
+  if(k==='t'&&where==='street'){const r=street.toggle3D();APP.toast(r==null?'Phố 3D Google chưa tải xong hoặc chưa có mã Cesium.':r?'Phố 3D thật của Google':'Phố vẽ từ bản đồ mở',1800);return;}
   keys.add(k);if(k.startsWith('arrow'))e.preventDefault();});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());
@@ -483,15 +484,15 @@ function exitMode(){if(mode==='walk')return;if(mode==='fridge'){closeFridge();re
   camTween=null;try{window.focus();}catch(e){}}
 /* ================= ra phố / về phòng ================= */
 function fade(on,txt){const f=$('#fade');f.querySelector('span').textContent=txt||'';if(on){f.hidden=false;requestAnimationFrame(()=>f.style.opacity=1);}else{f.style.opacity=0;setTimeout(()=>f.hidden=true,450);}}
-const streetOpts=()=>({player,toast:(m)=>APP.toast(m,4200),onHome:goHome});
+const streetOpts=()=>({player,renderer,camera,toast:(m)=>APP.toast(m,4200),onHome:goHome});
 async function goOut(target){if(streetBuilding||where==='street')return;closePanel();sfx.door();fade(true,street?'':'Đang dựng khu phố Nguyễn Huệ từ bản đồ thật…');streetBuilding=true;
   try{if(!street){await new Promise(r=>setTimeout(r,450));street=await buildStreet(streetOpts());}}
   catch(e){console.error(e);streetBuilding=false;fade(false);APP.toast('Không dựng được khu phố: '+e.message);return;}
   streetBuilding=false;APP._street=street;scene.remove(player);street.scene.add(player);const s=street.spawn;let spx=s.x,spz=s.z;if(target&&target.x!=null)[spx,spz]=street.safeSpot(target.x,target.z);player.position.set(spx,0,spz);player.rotation.y=s.yaw;yaw=s.yaw+Math.PI;pitch=.28;dist=4.2;
-  where='street';camTween=null;$('#css3d').hidden=true;$('#minimapBox').hidden=false;$('#bHome').hidden=false;$('#hRoomLbl').textContent='Đang ở';
+  where='street';camTween=null;camera.far=3000;camera.updateProjectionMatrix();$('#css3d').hidden=true;$('#minimapBox').hidden=false;$('#bHome').hidden=false;$('#hRoomLbl').textContent='Đang ở';
   camera.position.set(spx-Math.sin(s.yaw)*4,2.5,spz-Math.cos(s.yaw)*4);camera.lookAt(spx,1.5,spz);
   setTimeout(()=>{fade(false);APP.toast(target&&target.n?'Đã tới: '+target.n:'Bạn đang đứng trước chung cư 42 Nguyễn Huệ. Bấm M để mở bản đồ.',4500);},200);}
-function goHome(){fade(true);setTimeout(()=>{street.scene.remove(player);scene.add(player);player.position.set(2.575,0,2.3);player.rotation.y=Math.PI;yaw=0;pitch=.3;dist=3.2;where='room';
+function goHome(){fade(true);setTimeout(()=>{camera.far=300;camera.updateProjectionMatrix();street.scene.remove(player);scene.add(player);player.position.set(2.575,0,2.3);player.rotation.y=Math.PI;yaw=0;pitch=.3;dist=3.2;where='room';
   $('#css3d').hidden=false;$('#minimapBox').hidden=true;$('#bHome').hidden=true;$('#hRoomLbl').textContent='Trong phòng';camera.position.set(2.575,2,3.5);sfx.door();updHud();fade(false);},350);}
 document.querySelectorAll('#remote [data-k]').forEach(b=>b.addEventListener('click',()=>{sfx.beep&&sfx.pop();tvKey(b.dataset.k);}));
 $('#tvExit').onclick=exitMode;
